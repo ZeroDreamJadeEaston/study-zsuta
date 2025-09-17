@@ -1,0 +1,151 @@
+data segment
+     prompt  db 13,10,"press any key to continue...$"
+     output_key db "Please output the prime numbers between 0 and 100: $"  
+       msg_separator db ' ', '$'
+data ends  
+
+stack segment stack
+    dw 256 dup(0)    ; 定义堆栈空间
+stack ends 
+
+
+code segment
+      assume cs:code,ds:data
+    
+      
+main proc far  
+      mov ax,data
+      mov ds,ax   
+      mov ax, stack
+    mov ss, ax
+    mov sp, 128    
+    
+    
+     mov ah, 9
+    mov dx, offset output_key
+    int 21h     
+    
+    
+     mov ah,2       ;换行处理
+    mov dl,13
+    int 21h
+    mov dl,10
+    int 21h
+      
+      
+        
+       mov cx, 1
+
+     main_loop:
+    push cx
+    call isprime
+
+    cmp ax, 1
+    jne skip_print
+
+    mov bx, cx
+    call printdecimal
+
+    mov ah, 09h
+    lea dx, msg_separator
+    int 21h
+
+skip_print:
+    inc cx
+    cmp cx, 100
+    jle main_loop
+
+    mov ah,9 
+mov dx,offset prompt
+int 21h
+mov ah,1
+int 21h
+
+mov ax,4c00h
+int 21h       
+main endp
+
+isprime proc near
+    push bp
+    mov bp, sp
+
+    push bx
+    push cx
+    push dx
+
+    mov ax, [bp+4]
+
+    cmp ax, 2
+    jl not_prime
+    je is_prime
+    test al, 1
+    jz not_prime
+
+    mov cx, 3
+
+check_loop:
+    mov ax, cx
+    mul cx
+    mov bx, [bp+4]
+
+    cmp dx, 0
+    ja is_prime
+    cmp bx, ax
+    jl is_prime
+
+    mov ax, bx
+    xor dx, dx
+    div cx
+    cmp dx, 0
+    je not_prime
+
+    add cx, 2
+    jmp check_loop
+
+is_prime:
+    mov ax, 1
+    jmp prime_exit
+
+not_prime:
+    mov ax, 0
+
+prime_exit:
+    pop dx
+    pop cx
+    pop bx
+    pop bp
+    ret 2
+isprime endp
+
+printdecimal proc near
+    push ax
+    push cx
+    push dx
+
+    mov ax, bx
+    xor cx, cx
+    mov bx, 10
+
+convert_loop_pd:
+    xor dx, dx
+    div bx
+    push dx
+    inc cx
+    cmp ax, 0
+    jne convert_loop_pd
+
+print_loop_pd:
+    pop dx
+    add dl, '0'
+    mov ah, 02h
+    int 21h
+    loop print_loop_pd
+
+    pop dx
+    pop cx
+    pop ax
+    ret
+printdecimal endp
+
+code ends
+end main

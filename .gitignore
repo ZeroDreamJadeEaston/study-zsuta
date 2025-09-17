@@ -1,0 +1,55 @@
+# 忽略操作系统自动生成的文件
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 忽略临时文件、日志
+*.log
+*.tmp
+*.bak
+*.swp
+
+# 忽略常见大文件（视频、音频）
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.flv
+*.wmv
+*.mp3
+*.wav
+*.flac
+
+# 忽略压缩包、镜像、安装包
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.iso
+*.exe
+*.msi
+
+# 忽略大数据文件
+*.csv
+*.xls
+*.xlsx
+*.mat
+*.h5
+*.npy
+
+# 忽略Python/编程相关临时目录
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.class
+
+# 忽略IDE配置
+.vscode/
+.idea/
+
+# 忽略其他可能的无用目录
+node_modules/
+dist/
+build/

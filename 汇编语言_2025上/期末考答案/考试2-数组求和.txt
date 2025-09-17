@@ -1,0 +1,126 @@
+stack_seg segment stack
+    db 256 dup(0)
+stack_seg ends
+
+data_seg segment
+    bytearray db 12, -5, 7, 23, -8, 15, -3, 10, 6, -2
+    arraylength equ $-bytearray
+
+    sumresult dw ?
+
+    msg db 'array sum is: $' 
+     key db 13,10,"press any key...$"
+data_seg ends
+
+code_seg segment
+    assume cs:code_seg, ds:data_seg, ss:stack_seg
+
+main proc far
+    mov ax, data_seg
+    mov ds, ax
+
+    mov si, offset bytearray
+    mov cx, arraylength
+    call sumbytearray
+
+    mov sumresult, ax
+
+    mov ah, 09h
+    mov dx, offset msg
+    int 21h
+
+    mov bx, sumresult
+    call printword
+
+     mov ah,9
+    mov dx,offset key
+    int 21h
+    mov ah,1
+    int 21h
+
+    mov ax,4c00h
+    int 21h
+main endp
+
+; --------------------------------------------------
+; sumbytearray 过程
+; 输入: si = 数组偏移地址
+;       cx = 数组长度
+; 输出: ax = 求和结果（16位有符号）
+; --------------------------------------------------
+sumbytearray proc near
+    push si
+    push cx
+
+    xor dx, dx      ; dx = 累加和 = 0
+    xor ax, ax      ; 清 ax
+
+sum_loop:
+    cmp cx, 0
+    je sum_done
+
+    mov al, [si]    ; 取出当前字节
+    cbw             ; sign extend al -> ax
+
+    add dx, ax      ; 把 ax 累加到 dx 里
+
+    inc si
+    dec cx
+    jmp sum_loop
+
+sum_done:
+    mov ax, dx      ; 把结果放回 ax，返回值
+    pop cx
+    pop si
+    ret
+sumbytearray endp
+
+; --------------------------------------------------
+; printword 过程
+; 输入: bx = 要输出的有符号16位数
+; --------------------------------------------------
+printword proc near
+    push ax
+    push bx
+    push cx
+    push dx
+
+    cmp bx, 0
+    jge print_positive
+
+    ; 如果是负数，先打印负号
+    mov ah, 02h
+    mov dl, '-'
+    int 21h
+    neg bx           ; 转为正数再处理
+
+print_positive:
+    mov ax, bx
+    xor cx, cx
+    mov dx, 0
+    mov bx, 10
+
+convert_loop:
+    xor dx, dx
+    div bx
+    push dx
+    inc cx
+    cmp ax, 0
+    jne convert_loop
+
+output_loop:
+    pop dx
+    add dl, '0'
+    mov ah, 02h
+    int 21h
+    loop output_loop
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+printword endp
+
+code_seg ends
+end main

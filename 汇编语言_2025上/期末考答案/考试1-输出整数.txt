@@ -1,0 +1,212 @@
+data segment
+    input_prompt db 'Please enter a decimal number(0-65535): $'
+    output_prompt db 13,10,'Decimal result: $'
+    str_buffer db 8 dup(0)                ; 输入缓冲区
+    dec_number_str db 8 dup(0)            ; 输出字符串缓冲区
+    prompt db "press any key to continue...$"
+data ends
+
+stack segment
+    dw 128 dup(0)
+stack ends
+
+code segment
+assume cs:code,ds:data,ss:stack
+
+main proc
+    mov ax, data
+    mov ds, ax
+    mov ax,stack
+    mov ss,ax
+    mov sp,128
+
+    mov byte ptr [str_buffer], 6          ; 设置最大输入长度
+
+    mov ah, 9
+    mov dx, offset input_prompt           ; 显示输入提示信息
+    int 21h
+
+    mov dx, offset str_buffer
+    call input_string                     ; 读入字符串
+
+    call str_to_int                       ; 将输入字符串转成整数，结果存AX
+
+    mov dx, offset dec_number_str + 2
+    call int_to_str                       ; 将整数转成字符串，写入dec_number_str
+
+    mov ah,9
+    mov dx,offset output_prompt           ; 显示结果提示信息
+    int 21h
+
+    mov bx, offset dec_number_str + 2
+    call puts                             ; 打印转换结果字符串
+
+    mov ah,2                              ; 换行
+    mov dl,13
+    int 21h
+    mov dl,10
+    int 21h
+
+    mov ah,9
+    mov dx,offset prompt                  ; 显示按任意键提示
+    int 21h
+
+    mov ah,1                              ; 等待按键
+    int 21h
+    mov ax,4c00h                          ; 程序结束
+    int 21h
+main endp
+
+;------------------------------------------------
+; input_string 过程
+; 读取输入字符串，自动添加 '\0' 结尾
+;------------------------------------------------
+input_string proc near
+    push ax
+    push dx
+    push bx
+    push si
+
+    mov ah,0Ah
+    int 21h
+
+    mov bx, dx
+    mov cl, [bx + 1]
+    mov ch, 0
+
+    add bx, 2
+    add bx, cx
+    mov byte ptr [bx], 0                  ; 末尾加 \0
+
+    pop si
+    pop bx
+    pop dx
+    pop ax
+    ret
+input_string endp
+
+;------------------------------------------------
+; puts 过程
+; 打印 '\0' 结尾的字符串
+;------------------------------------------------
+puts proc near
+    push bp
+    mov bp,sp
+    sub sp,2
+    push dx
+    push bx
+
+    mov word ptr [bp-2],0
+    mov si, bx
+
+loop_entrance:
+    cmp byte ptr [si],0
+    je  loop_exit
+    mov ah,2
+    mov dl,[si]
+    int 21h
+    inc si
+    inc word ptr [bp-2]
+    jmp loop_entrance
+loop_exit:
+    mov ax,[bp-2]
+    pop bx
+    pop dx
+    mov sp,bp
+    pop bp
+    ret
+puts endp
+
+;------------------------------------------------
+; str_to_int 过程
+; 将输入的十进制字符串转换为整数（16位无符号）
+; 输入: DX -> str_buffer
+; 输出: AX = 结果
+;------------------------------------------------
+str_to_int proc near
+    push bx
+    push cx
+    push dx
+    push si
+
+    mov si, dx
+    mov cl, [si + 1]
+    mov ch, 0
+    add si, 2
+
+    xor ax, ax
+    mov bx, 10
+
+convert_loop:
+    cmp cx, 0
+    je convert_done
+
+    mul bx                               ; AX = AX * 10
+
+    mov dl, [si]
+    sub dl, '0'
+    mov dh, 0
+    add ax, dx                          ; AX = AX + 当前数字
+
+    inc si
+    dec cx
+    jmp convert_loop
+
+convert_done:
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    ret
+str_to_int endp
+
+;------------------------------------------------
+; int_to_str 过程
+; 将16位无符号整数AX转换成字符串，写入DX指向的缓冲区
+;------------------------------------------------
+int_to_str proc near
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    mov di, dx
+    xor cx, cx
+    mov bx, 10
+
+    cmp ax, 0
+    jne convert_positive
+    mov byte ptr [di], '0'
+    inc di
+    jmp convert_done_str
+
+convert_positive:
+convert_loop_str:
+    xor dx, dx
+    div bx                              ; 取商、余数
+    push dx
+    inc cx
+    cmp ax, 0
+    jne convert_loop_str
+
+output_digits_str:
+    pop dx
+    add dl, '0'
+    mov [di], dl
+    inc di
+    loop output_digits_str
+
+convert_done_str:
+    mov byte ptr [di], 0                 ; 字符串结束符
+
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+int_to_str endp
+
+code ends
+end main
